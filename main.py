@@ -1,6 +1,7 @@
 import STT
 import NLP
 import actions
+import TTS
 import time
 
 if __name__ == "__main__":
@@ -15,6 +16,7 @@ if __name__ == "__main__":
     nlp_result = NLP.get_response(text)
     
     print("ASSISTANT: ", nlp_result.reply_text)
+    TTS.speak(nlp_result.reply_text)
     actions.handle_action(nlp_result.action, nlp_result.params)
     
     end = time.perf_counter()

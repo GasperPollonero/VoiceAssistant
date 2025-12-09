@@ -6,7 +6,7 @@ from scipy.io import wavfile
 from pathlib import Path
 
 def load_stt_config() -> dict:
-    """Load and return STT configuration from JSON file"""
+    """Load and return STT configuration from JSON file."""
     
     base_dir = Path(__file__).resolve().parent
     config_path = base_dir / "config" / "stt_config.json"
@@ -83,12 +83,17 @@ def get_text_from_mic(max_seconds : int = 10) -> str:
     fs  = cfg["SAMPLING_FREQUENCY"]
     channels = cfg["SAMPLING_CHANNELS"]
     
-    sd.default.samplerate = fs
-    sd.default.channels = channels
-    sd.default.device = 1
+    #sd.default.samplerate = fs
+    #sd.default.channels = channels
+    #d.default.device = 1
     
     print("Parla ora... ")
-    myrec = sd.rec(int(max_seconds * fs))
+    myrec = sd.rec(
+        int(max_seconds * fs), 
+        samplerate=fs, 
+        channels=channels
+        )
+    
     sd.wait()
     
     print("...recording ended.")
