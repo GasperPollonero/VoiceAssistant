@@ -28,7 +28,7 @@ class PiperTTS:
         self.channels : int = self.cfg["CHANNELS"]
         self.block_size : int = self.cfg["BLOCK_SIZE"]
         
-        self._reader_thread = threading.Thread | None = None
+        self._reader_thread : threading.Thread | None = None
         self._stop_flag : threading.Event = threading.Event()
         self._stream : sd.OutputStream | None = None
         
@@ -43,8 +43,10 @@ class PiperTTS:
             self.cfg["PIPER_BIN"], 
             "--model", self.cfg["MODEL_PATH"],
             "--output-raw",
-            self.cfg["extra_args_server"]
+            "--output-file", "-", # stdout
         ]
+        extra = self.cfg.get("extra_args", [])
+        args.extend(extra)
         
         self.proc = subprocess.Popen(
             args,
@@ -71,7 +73,7 @@ class PiperTTS:
             callback = self._audio_callback
         )
         
-        self.stream.start()
+        self._stream.start()
     
     def stop(self):
         """ Stops stream audio and Piper. """
@@ -84,6 +86,7 @@ class PiperTTS:
             self._stream = None
             
         if self.proc is not None:
+             
             try:
                 self.proc.stdin.close()
             except Exception:
@@ -104,17 +107,17 @@ class PiperTTS:
             if not raw:
                 break # Piper closed stdout
             
-        data = np.frombuffer(raw, dtype=np.int16) # converts byte into array
-        
-        if self.channels > 1:
-            data = data.reshape(-1, self.channels)
+            data = np.frombuffer(raw, dtype=np.int16) # converts byte into array
             
-            
-        self.audio_queue.put(data) # bloks thread exectuion until the queue has enough space
-        """try:
-            self.audio_queue.put(data, timeout=0.5)
-        except queue.Full:
-            pass"""
+            if self.channels > 1:
+                data = data.reshape(-1, self.channels)
+                
+                
+            self.audio_queue.put(data) # bloks thread execution until the queue has enough space
+            """try:
+                self.audio_queue.put(data, timeout=0.5)
+            except queue.Full:
+                pass"""
             
 
     def _audio_callback(self, outdata, frames, time, status):
@@ -126,7 +129,7 @@ class PiperTTS:
             outdata[:] = 0
             return"""
         chunk = self.audio_queue.get()
-        
+        print("HERE")
         # if chunk is shorter fill till its length 
         if len(chunk) < frames:
             outdata[:len(chunk)] = chunk.reshape(-1, self.channels)
@@ -143,3 +146,12 @@ class PiperTTS:
         line = (text.strip() + "\n").encode("utf-8")
         self.proc.stdin.write(line)
         self.proc.stdin.flush()
+        
+
+if __name__ == "__main__":
+    server = PiperTTS()
+    server.start()
+    server.speak("ciao come stai? Io sto bene.")
+    while server.audio_queue.empty():
+        print(server.audio_queue.qsize())
+    server.stop()
