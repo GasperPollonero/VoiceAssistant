@@ -9,7 +9,11 @@ if __name__ == "__main__":
     start = time.perf_counter()
     
     
-    text = STT.get_text_from_mic(5)
+    text = STT.get_text_from_mic(2)
+    
+    end = time.perf_counter()
+    elapsed = end - start
+    print(f"Tempo di analisi vocale: {elapsed:.2f} s")
     
     print("USER: ", text)
     
