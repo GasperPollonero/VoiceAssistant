@@ -47,7 +47,7 @@ def _callback(indata,frames,time,status):
 with sd.InputStream(
     samplerate=SAMPLERATE,
     blocksize=BLOCKSIZE,
-    channels=1,
+    channels=1,	# Vosk uses audio mono only.
     callback=_callback,
     dtype="int16"
     ):
