@@ -1,0 +1,1 @@
+input("Text to read: ").strip()
