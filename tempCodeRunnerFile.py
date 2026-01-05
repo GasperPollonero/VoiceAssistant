@@ -1,1 +1,1 @@
-input("Text to read: ").strip()
+# data queue for audio chunks, multithreading-safe.

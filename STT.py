@@ -1,116 +1,79 @@
 import json
-import subprocess
-import time
 import sounddevice as sd
-from scipy.io import wavfile
 from pathlib import Path
+from vosk import KaldiRecognizer, Model, SetLogLevel
+from queue import Queue, Full
 
-def load_stt_config() -> dict:
-    """Load and return STT configuration from JSON file."""
+class STT:
     
-    base_dir = Path(__file__).resolve().parent
-    config_path = base_dir / "config" / "stt_config.json"
-    with config_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-    
-
-def get_text_from_audiofile(path : str, lang : str | None = None, proc_time : bool = False) -> str:
-    """Return the transcription of a WAV file.
-
-    Args:
-        path (str): Path to the wav file.
-        lang (str | None, optional): Language to use for transcription. If None, the "DEFAULT_LANGUAGE" from stt_config.json is used.
-        proc_time (bool, optional): If True, print the total transcription time. Defaults to False.
-
-    Raises:
-        FileNotFoundError: _description_
-        RuntimeError: _description_
-        RuntimeError: _description_
-
-    Returns:
-        str: the transcription of the audio file.
-    """
-    if proc_time:
-        start = time.perf_counter()
+    def __init__(self):
         
-        
-    cfg = load_stt_config()
-    whisper_bin  = cfg["WHISPER_BIN"]
-    model_path 	 = cfg["MODEL_PATH"]
-    default_lang = cfg["DEFAULT_LANGUAGE"]
-    extra_args   = cfg.get("extra_args", [])
-    
-    audio_path = Path(path)
-    if not audio_path.is_file():
-        raise FileNotFoundError(f"Audio file not found: {audio_path}")
-    
-    lang_to_use = lang or default_lang
-    
-    cmd = [
-        whisper_bin,
-        "-m", model_path,
-        "-f", str(audio_path),
-        "-l", lang_to_use,
-    ] + extra_args
-    
-    # Runs the program and creates a audio_path.txt files with result
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True
-    )
-    
-    if result.returncode != 0:
-        raise RuntimeError(f"whisper-cli failed with code {result.returncode}:\n{result.stderr}")
-        
-    txt_path = audio_path.with_suffix(audio_path.suffix + ".txt")
-    if not txt_path.is_file():
-        raise RuntimeError(f"Output txt file not found: {txt_path}")
-    
-    with txt_path.open("r", encoding="utf-8") as f:
-        text = f.read().strip()
-    
-    if proc_time:
-        elapsed = time.perf_counter() - start
-        print(f"[STT] {path} trascritto in: {elapsed:.2f} s")
-        
-    return text
-    
+        # configuration dictionary.
+        self.cfg : dict
+        # vosk class which transform speech to text.
+        self.rec : KaldiRecognizer
+        # data queue for audio chunks, multithreading-safe.
+        self.q_data : Queue[bytes] = Queue(maxsize=20)
 
-def get_text_from_mic(max_seconds : int = 10) -> str:
-    
-    cfg = load_stt_config()
-    fs  = cfg["SAMPLING_FREQUENCY"]
-    channels = cfg["SAMPLING_CHANNELS"]
-    
-    #sd.default.samplerate = fs
-    #sd.default.channels = channels
-    #d.default.device = 1
-    
-    print("Parla ora... ")
-    myrec = sd.rec(
-        int(max_seconds * fs), 
-        samplerate=fs, 
-        channels=channels
-        )
-    
-    sd.wait()
-    
-    print("...recording ended.")
-    wavfile.write(data = myrec, rate = fs, filename="Traccia/temp_recording.wav")
-    
-    return get_text_from_audiofile("Traccia/temp_recording.wav")
 
+    def initialize_STT(self):
+        """Loads vosk configuration and model."""
+        self.cfg = self.load_stt_config()
+        model = Model(self.cfg["MODEL_PATH"])
+        self.rec = KaldiRecognizer(model, self.cfg["SAMPLING_FREQUENCY"])
+    
+    def load_stt_config(self) -> dict:
+        """Load and return STT configuration from JSON file."""
+        
+        base_dir = Path(__file__).resolve().parent
+        config_path = base_dir / "config" / "stt_config_vosk.json"
+        with config_path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+        
+    # callback function of the InputStream thread.
+    def _callback(self, indata, time, frames, status):
+        
+        # converts data into bytes for Vosk.
+        data = indata.tobytes()
+        
+        try:
+            self.q_data.put(data)
+        except Full:
+            print("STT queue is full!")
+        
+    def get_text_from_mic(self, max_seconds : int = -1) -> str:
+        
+        # clear queue.
+        self.q_data = Queue()
+        
+        # starts listening.
+        with sd.InputStream(
+            samplerate=self.cfg["SAMPLING_FREQUENCY"],
+            blocksize=self.cfg["BLOCKSIZE"],
+            channels=1,
+            callback=self._callback,
+            dtype="int16"
+        ):
+            print("Parla ora... ")
+            
+            while True:
+                data = self.q_data.get()
+                # when sentence is completed stop listening.
+                if self.rec.AcceptWaveform(data):
+                    break
+            
+            # closes InputStream() and returns Vosk result.
+            return json.loads(self.rec.Result()).get("text", "")
+
+           
+# main section for testing.
 if __name__ == "__main__":
-    start = time.perf_counter()
     
+    stt = STT()
+    stt.initialize_STT()
     
-    print(get_text_from_mic(5))
+    while True:
+        text = input("READY")
+        if text == "a":
+            print(stt.get_text_from_mic())
     
-    
-    #print(get_text_from_audiofile("Traccia/mentana.wav", proc_time=True))
-    
-    
-    end = time.perf_counter()
-    elapsed = end - start
-    print(f"Tempo di esecuzione: {elapsed:.2f} s")

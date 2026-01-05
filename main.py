@@ -1,4 +1,4 @@
-import STT
+from STT import STT
 import NLP
 import actions
 import TTS
@@ -8,8 +8,9 @@ if __name__ == "__main__":
     
     start = time.perf_counter()
     
-    
-    text = STT.get_text_from_mic(2)
+    stt = STT()
+    stt.initialize_STT()
+    text = stt.get_text_from_mic()
     
     end = time.perf_counter()
     elapsed = end - start
