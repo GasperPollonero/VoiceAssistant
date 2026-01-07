@@ -37,7 +37,7 @@ def handle_action(action : str | None, params: dict[str, Any] | None = None):
             print("VOLUME SU")
         case "volume_down":
             print("VOLUME DOWN")
-        case "set_volume":
+        case "pc.set_volume":
             set_volume(params["volume"])
             
 

@@ -16,21 +16,23 @@ if __name__ == "__main__":
         
         if command == "exit":
             break
-        
-        # converts speech to text.
-        start = time()
-        input_text = stt.get_text_from_mic()
-        print(f"Tempo di analisi vocale: {(time() - start):.2f} s")
-        print("USER: ", input_text)
+        elif command != "":
+            input_text = command
+        else:
+            # converts speech to text.
+            start = time()
+            input_text = stt.get_text_from_mic()
+            print(f"Tempo di analisi vocale: {(time() - start):.2f} s")
+            print("USER: ", input_text)
         
         # analyzes text.
         start = time()
         nlp_result = NLP.get_response(input_text)        
+        
+        # execute the action.
         actions_result = actions.handle_action(nlp_result.action, nlp_result.params)
         print(f"Tempo di analisi NLP: {(time() - start):.2f} s")
-        print("ASSISTANT: ", nlp_result.reply_text, actions_result)
-        
         print("ASSISTANT: ", nlp_result.reply_text)
     
         # synthetizes response.
-        TTS.speak(nlp_result.reply_text)
+        #TTS.speak(nlp_result.reply_text)

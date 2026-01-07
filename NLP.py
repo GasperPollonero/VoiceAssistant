@@ -27,7 +27,7 @@ def get_response(user_text: str, user_id : str | None = None, history: Sequence[
         case "goodbye":
             return NlpResult("arrivederci!")
         
-        case "set_volume":
+        case "pc.set_volume":
             
             # convert text numbers in digits.
             text = alpha2digit(user_text, "it")
@@ -36,7 +36,6 @@ def get_response(user_text: str, user_id : str | None = None, history: Sequence[
             m = re.search(r"\b(\d{1,3})\b", text)
             if m:
                 volume = int(m.group(1))
-                print("volume: ", volume)
             else:
                 # check for 'zero'
                 m = re.search(r"\b(zero)\b", text)
@@ -45,7 +44,7 @@ def get_response(user_text: str, user_id : str | None = None, history: Sequence[
                 else:
                     return NlpResult("Specifica il volume.")
 
-            return NlpResult("Imposto volume a " + str(volume) + ".", action="set_volume", params={"volume" : volume})
+            return NlpResult("Imposto volume a " + str(volume) + ".", action="pc.set_volume", params={"volume" : volume})
         
         case "volume_up":
             return NlpResult("Ricevuto, eseguo", action="volume_up", params=None)
