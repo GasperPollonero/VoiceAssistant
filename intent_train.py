@@ -66,8 +66,6 @@ def train_intent_model(csv_path : str, model_dir : str = "models/intent"):
     X_train = vectorizer.fit_transform(X_train_texts)
     X_test = vectorizer.transform(X_test_texts)
     
-    #print(X_train)
-    
     # actual training
     
     clf = LogisticRegression(max_iter=1000) # if max_iter too small: could not converge
@@ -75,10 +73,11 @@ def train_intent_model(csv_path : str, model_dir : str = "models/intent"):
 
     # accuracy evaluation
     
+    print(f"Test: {X_test_texts}")
     print(f"Results: {clf.predict(X_test)}")
     print(f"Score: {clf.score(X_test, y_test)}")
     
-    # saves results
+    # save results
     
     model_dir_path = Path(model_dir)
     model_dir_path.mkdir(
@@ -91,4 +90,4 @@ def train_intent_model(csv_path : str, model_dir : str = "models/intent"):
 
 if __name__ == "__main__":
     
-    train_intent_model("Intents.csv")
+    train_intent_model("D:/Cpp/Databases/NLP_router.csv")
